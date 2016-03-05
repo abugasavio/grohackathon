@@ -41,13 +41,15 @@ def fetch_data_via_ftp():
 
 
 def read_file(start_date, end_date):
-    dataframe = pd.read_csv('nass_crops.csv', sep='\t', nrows=20)
+    dataframe = pd.read_csv('nass_crops.csv', sep='\t', columns=[], nrows=20)
 
     start_year = int(start_date[:4])
     end_year = int(end_date[:4])
 
+    columns = ['DOMAIN_DESC', 'COMMODITY_DESC', 'STATISTICCAT_DESC', 'AGG_LEVEL_DESC', 'COUNTRY_NAME', 'STATE_NAME', 'COUNTY_NAME', 'UNIT_DESC', 'VALUE', 'YEAR']
+    dataframe = dataframe[columns]
+
     filtered_dataframe = dataframe[(dataframe.YEAR >= start_year) & (dataframe.YEAR <= end_year)]
-    filtered_dataframe.rename(columns={'CV_%': 'CV'}, inplace=True)  # Postgres does not like this column name
 
     return filtered_dataframe
 
@@ -65,11 +67,7 @@ def write_dataframe_to_db(dataframe, database_host, database_name, database_user
 
 def begin_nass_harvest(database_host, database_name, database_user, database_password,
                        port, start_date, end_date):
-    print "\nThis is a starter script for the Gro Hackathon's NASS harvest. It meets the API " \
-          "requirements defined for the hackathon\n\n"
-
     print "Run 'python harvest.py -h' for help\n\n"
-    print "Feel free to edit the entirety of this start script\n"
 
     print "Supplied Args (some default): "
     print "Database Host: {}".format(database_host)
@@ -81,7 +79,7 @@ def begin_nass_harvest(database_host, database_name, database_user, database_pas
     print "Harvest End Date: {}\n".format(end_date)
 
     print "Started Fetching data...."
-    print "This might take a while.."
+    print "This might take a while. Grab yourself some coffee."
     #fetch_data_via_ftp()
     print "*********** DONE FETCHING DATA **************"
 
