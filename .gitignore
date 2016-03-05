@@ -1,0 +1,8 @@
+# Datafiles
+nass_crops.csv
+
+# Pycharm Files
+.idea/*
+
+# Notebook checkpoints
+.ipynb_checkpoints
