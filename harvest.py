@@ -108,7 +108,7 @@ def main(argv):
     port = 5432
     database_user = 'gro'
     database_password = 'gro123'
-    start_date = '2005-1-1'
+    start_date = '2015-1-1'
     end_date = '2015-12-31'
 
     for opt, arg in opts:
