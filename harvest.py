@@ -1,14 +1,16 @@
+#!/usr/bin/env python
+
 import sys
 import re
 import getopt
+import ftplib
 from ftplib import FTP
 import pandas as pd
 import gzip
+from sqlalchemy import create_engine
 
 
-def read_file(start_date, end_date):
-    """
-    print 'Fetching the data...'
+def fetch_data_via_ftp():
     ftp = FTP('ftp.nass.usda.gov')
     ftp.login()
     ftp.cwd('quickstats')
@@ -25,32 +27,40 @@ def read_file(start_date, end_date):
 
     crops_file = [f for f in files if re.match('^qs.crops_', f)][0]
 
-
     ftp.retrbinary('RETR ' + crops_file, open('nass_crops.csv.gz', 'wb').write)
     ftp.quit()
     print 'Done extracting data'
-    
+
     # Extract data from file within date period
-    print 'Unzipping file...'   
+    print 'Unzipping file...'
     target_file = open('nass_crops.csv', 'w')
     with gzip.open('nass_crops.csv.gz', 'rb') as f:
         file_content = f.read()
         target_file.write(file_content)
         target_file.close()
-    """
-    print 'Writen csv file nass_crops.csv' 
 
+
+def read_file(start_date, end_date):
     dataframe = pd.read_csv('nass_crops.csv', sep='\t', nrows=20)
 
     start_year = int(start_date[:4])
     end_year = int(end_date[:4])
 
     filtered_dataframe = dataframe[(dataframe.YEAR >= start_year) & (dataframe.YEAR <= end_year)]
+    filtered_dataframe.rename(columns={'CV_%': 'CV'}, inplace=True)  # Postgres does not like this column name
 
-    print filtered_dataframe
+    return filtered_dataframe
 
-    print 'Writing the dataframe into database'
 
+def write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port):
+    # create database
+    engine = create_engine("postgres://" + database_user + ":" + database_password + "@" + database_host + ":" + str(port))
+    connection = engine.connect()
+    connection.execute("commit")
+    connection.execute("create database " + database_name)
+    connection.close()
+
+    dataframe.to_sql('fact_data', engine, if_exists='replace')
 
 
 def begin_nass_harvest(database_host, database_name, database_user, database_password,
@@ -70,20 +80,20 @@ def begin_nass_harvest(database_host, database_name, database_user, database_pas
     print "Harvest Start Date: {}".format(start_date)
     print "Harvest End Date: {}\n".format(end_date)
 
-    # Create database
+    print "Started Fetching data...."
+    print "This might take a while.."
+    #fetch_data_via_ftp()
+    print "*********** DONE FETCHING DATA **************"
+
+    print "Reading data into a dataframe..."
+    dataframe = read_file(start_date, end_date)
+    print "*********** DONE READING DATA **************"
+
+    print "Writing data to database"
+    write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port)
+    print "*********** DONE WRITING DATA **************"
 
 
-    # Fetch files via FTP
-
-
-    # Insert data into dB
-
-
-    # Generate some stats
-
-# #################################################
-# PUT YOUR CODE ABOVE THIS LINE
-# #################################################
 def main(argv):
     try:
         opts, args = getopt.getopt(argv, "h", ["database_host=", "database_name=", "start_date=",
@@ -93,7 +103,7 @@ def main(argv):
               'harvest.py -h'
         sys.exit(2)
 
-    #define defaults
+    # define defaults
     database_host = 'localhost'
     database_name = 'gro'
     port = 5432
@@ -132,4 +142,5 @@ def main(argv):
                        port, start_date, end_date)
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+    main(sys.argv[1:])
+
