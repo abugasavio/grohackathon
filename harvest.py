@@ -8,6 +8,7 @@ from ftplib import FTP
 import pandas as pd
 import gzip
 from sqlalchemy import create_engine
+from sqlalchemy_utils.functions import create_database, database_exists
 
 
 def fetch_data_via_ftp():
@@ -41,7 +42,7 @@ def fetch_data_via_ftp():
 
 
 def read_file(start_date, end_date):
-    dataframe = pd.read_csv('nass_crops.csv', sep='\t', columns=[], nrows=20)
+    dataframe = pd.read_csv('nass_crops.csv', sep='\t')
 
     start_year = int(start_date[:4])
     end_year = int(end_date[:4])
@@ -56,11 +57,11 @@ def read_file(start_date, end_date):
 
 def write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port):
     # create database
-    engine = create_engine("postgres://" + database_user + ":" + database_password + "@" + database_host + ":" + str(port))
-    connection = engine.connect()
-    connection.execute("commit")
-    connection.execute("create database " + database_name)
-    connection.close()
+    connection_string = "postgres://" + database_user + ":" + database_password + "@" + database_host + ":" + str(port)
+    engine = create_engine(connection_string)
+
+    if not database_exists(connection_string + '/' + database_name):
+        create_database(connection_string + '/' + database_name)
 
     dataframe.to_sql('fact_data', engine, if_exists='replace')
 
