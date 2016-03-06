@@ -29,14 +29,23 @@ Usage
    With the following options
    
    ­­start_date​=%Y­%m­%d
-   
    ­­end_date​=%Y­%m­%d
-   
    ­­database_name​=
-   
    ­­database_host​=
-   
    ­­database_user​=
-   
    ­­database_pass​=
 
+Future Features/ Optimization
+---
+1. Creating a data folder.
+
+2. Writing tests
+
+3. No need to download if the version of the file in the server is the same as the local one.
+
+4. Optimizing the reading the reading of data into the pandas dataframe
+
+   + [http://stackoverflow.com/questions/14262433/large-data-work-flows-using-pandas](Solution on stackoverflow)
+   
+   + [http://stackoverflow.com/questions/24251219/pandas-read-csv-low-memory-and-dtype-options](Solution on stackoverflow)
+   
