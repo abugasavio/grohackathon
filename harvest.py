@@ -145,7 +145,7 @@ def begin_nass_harvest(database_host, database_name, database_user, database_pas
 
     print "Some analysis on the data"
     analysis_dataframe = run_analysis(dataframe)
-    write_dataframe_to_db(analysis_dataframe, database_host, database_name, database_user, database_password, port, 'facts')
+    write_dataframe_to_db(analysis_dataframe, database_host, database_name, database_user, database_password, port, 'stats')
 
 
 def main(argv):
