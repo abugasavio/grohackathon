@@ -13,7 +13,6 @@ from sqlalchemy_utils.functions import create_database, database_exists
 
 
 def fetch_data_via_ftp():
-
     ftp = FTP('ftp.nass.usda.gov')
     ftp.login()
     ftp.cwd('quickstats')
@@ -30,13 +29,13 @@ def fetch_data_via_ftp():
 
     crops_file = [f for f in files if re.match('^qs.crops_', f)][0]
 
-    ftp.retrbinary('RETR ' + crops_file, open('data/nass_crops.csv.gz', 'wb').write)
+    ftp.retrbinary('RETR ' + crops_file, open('nass_crops.csv.gz', 'wb').write)
     ftp.quit()
     print 'Done downloading the crops file'
 
 
 def read_file(start_date, end_date):
-    dataframe = pd.read_csv(gzip.open('data/nass_crops.csv.gz'), sep='\t')
+    dataframe = pd.read_csv(gzip.open('nass_crops.csv.gz'), sep='\t')
 
     start_year = int(start_date[:4])
     end_year = int(end_date[:4])
