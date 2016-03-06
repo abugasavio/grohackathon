@@ -6,6 +6,7 @@ import getopt
 import ftplib
 from ftplib import FTP
 import pandas as pd
+import numpy as np
 import gzip
 from sqlalchemy import create_engine
 from sqlalchemy_utils.functions import create_database, database_exists
@@ -42,12 +43,12 @@ def fetch_data_via_ftp():
 
 
 def read_file(start_date, end_date):
-    dataframe = pd.read_csv('nass_crops.csv', sep='\t')
+    dataframe = pd.read_csv('nass_crops.csv', sep='\t', nrows=100000)
 
     start_year = int(start_date[:4])
     end_year = int(end_date[:4])
 
-    columns = ['DOMAIN_DESC', 'COMMODITY_DESC', 'STATISTICCAT_DESC', 'AGG_LEVEL_DESC', 'COUNTRY_NAME', 'STATE_NAME', 'COUNTY_NAME', 'UNIT_DESC', 'VALUE', 'YEAR']
+    columns = ['DOMAIN_DESC', 'COMMODITY_DESC', 'GROUP_DESC', 'STATISTICCAT_DESC', 'AGG_LEVEL_DESC', 'COUNTRY_NAME', 'STATE_NAME', 'COUNTY_NAME', 'UNIT_DESC', 'VALUE', 'YEAR']
     dataframe = dataframe[columns]
 
     filtered_dataframe = dataframe[(dataframe.YEAR >= start_year) & (dataframe.YEAR <= end_year)]
@@ -55,7 +56,7 @@ def read_file(start_date, end_date):
     return filtered_dataframe
 
 
-def write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port):
+def write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port, table):
     # create database
     connection_string = "postgres://" + database_user + ":" + database_password + "@" + database_host + ":" + str(port)
     engine = create_engine(connection_string)
@@ -63,7 +64,57 @@ def write_dataframe_to_db(dataframe, database_host, database_name, database_user
     if not database_exists(connection_string + '/' + database_name):
         create_database(connection_string + '/' + database_name)
 
-    dataframe.to_sql('fact_data', engine, if_exists='replace')
+    dataframe.to_sql(table, engine, if_exists='replace')
+
+
+def run_analysis(dataframe):
+    # clean the dataframe
+    dataframe.replace('(D)', np.NaN, inplace=True)
+    dataframe['VALUE'] = dataframe.VALUE.str.replace(',', '').astype(float)  # convert comma delimited numbers to float
+
+    # How many datapoints do we have:
+    datapoints = str(len(dataframe))
+    print "The number of data points: " + datapoints
+
+    # Commodities value counts:
+    commodity_value_counts = dataframe.COMMODITY_DESC.value_counts()
+    print commodity_value_counts
+
+    # State value counts
+    state_value_counts = dataframe.STATE_NAME.value_counts()
+    print state_value_counts
+
+    # Barley Analysis
+    barley_df = dataframe[(dataframe['AGG_LEVEL_DESC'] == 'COUNTY') & (dataframe['COMMODITY_DESC'] == 'BARLEY')]
+
+    try:
+        barley_dict = dict(barley_df.sort_values('VALUE', ascending=False).iloc[0])
+    except IndexError:
+        pass
+    else:
+        county_name = barley_dict['COUNTY_NAME']
+        barley_value = barley_dict['VALUE']
+        barley_year = barley_dict['YEAR']
+
+        print "The highest barley production: BY " + county_name + " in the year " + str(barley_year) + " at " + str(barley_value) + " Acres"
+
+    # Horticulture Analysis
+    horticulture_df = dataframe[(dataframe['AGG_LEVEL_DESC'] == 'NATIONAL') & (dataframe['GROUP_DESC'] == 'HORTICULTURE')]
+
+    try:
+        horticulture_dict = dict(horticulture_df.sort_values('VALUE', ascending=False).iloc[0])
+    except IndexError:
+        pass
+    else:
+        horticulture_value = horticulture_dict['VALUE']
+        horticulture_year = horticulture_dict['YEAR']
+
+        print "The highest horticulture nationally was in the year " + str(horticulture_year) + " at " + str(horticulture_value) + " Acres"
+
+    # create a dataframe with some analysis data
+    analysis_dataframe = pd.DataFrame({'datapoints_number': datapoints, 'commodity_value_count': str(commodity_value_counts),
+                                       'state_value_count': str(state_value_counts)})
+    return analysis_dataframe
 
 
 def begin_nass_harvest(database_host, database_name, database_user, database_password,
@@ -89,8 +140,12 @@ def begin_nass_harvest(database_host, database_name, database_user, database_pas
     print "*********** DONE READING DATA **************"
 
     print "Writing data to database"
-    write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port)
+    #write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port, 'fact_data')
     print "*********** DONE WRITING DATA **************"
+
+    print "Some analysis on the data"
+    analysis_dataframe = run_analysis(dataframe)
+    write_dataframe_to_db(analysis_dataframe, database_host, database_name, database_user, database_password, port, 'facts')
 
 
 def main(argv):
