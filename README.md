@@ -35,7 +35,7 @@ Usage
    ­­database_user​=
    ­­database_pass​=
 
-5. Check out [https://github.com/savioabuga/grohackathon/blob/master/harvest.ipynb] for some analysis
+5. Check out https://github.com/savioabuga/grohackathon/blob/master/harvest.ipynb for some analysis
 
 Future Features/ Optimization
 ---
