@@ -4,15 +4,16 @@ import sys
 import re
 import getopt
 import ftplib
-from ftplib import FTP
 import pandas as pd
 import numpy as np
 import gzip
+from ftplib import FTP
 from sqlalchemy import create_engine
 from sqlalchemy_utils.functions import create_database, database_exists
 
 
 def fetch_data_via_ftp():
+
     ftp = FTP('ftp.nass.usda.gov')
     ftp.login()
     ftp.cwd('quickstats')
@@ -29,21 +30,13 @@ def fetch_data_via_ftp():
 
     crops_file = [f for f in files if re.match('^qs.crops_', f)][0]
 
-    ftp.retrbinary('RETR ' + crops_file, open('nass_crops.csv.gz', 'wb').write)
+    ftp.retrbinary('RETR ' + crops_file, open('data/nass_crops.csv.gz', 'wb').write)
     ftp.quit()
-    print 'Done extracting data'
-
-    # Extract data from file within date period
-    print 'Unzipping file...'
-    target_file = open('nass_crops.csv', 'w')
-    with gzip.open('nass_crops.csv.gz', 'rb') as f:
-        file_content = f.read()
-        target_file.write(file_content)
-        target_file.close()
+    print 'Done downloading the crops file'
 
 
 def read_file(start_date, end_date):
-    dataframe = pd.read_csv('nass_crops.csv', sep='\t', nrows=100000)
+    dataframe = pd.read_csv(gzip.open('data/nass_crops.csv.gz'), sep='\t')
 
     start_year = int(start_date[:4])
     end_year = int(end_date[:4])
@@ -69,11 +62,12 @@ def write_dataframe_to_db(dataframe, database_host, database_name, database_user
 
 def run_analysis(dataframe):
     # clean the dataframe
-    dataframe.replace('(D)', np.NaN, inplace=True)
+    dataframe.replace(['(D)', '(Z)', '(NA)'], np.NaN, inplace=True)
     dataframe['VALUE'] = dataframe.VALUE.str.replace(',', '').astype(float)  # convert comma delimited numbers to float
 
     # How many datapoints do we have:
     datapoints = str(len(dataframe))
+    print "******************************************"
     print "The number of data points: " + datapoints
 
     # Commodities value counts:
@@ -82,6 +76,7 @@ def run_analysis(dataframe):
 
     # State value counts
     state_value_counts = dataframe.STATE_NAME.value_counts()
+    print "******************* STATE VALUE COUNTS *********************"
     print state_value_counts
 
     # Barley Analysis
@@ -95,7 +90,7 @@ def run_analysis(dataframe):
         county_name = barley_dict['COUNTY_NAME']
         barley_value = barley_dict['VALUE']
         barley_year = barley_dict['YEAR']
-
+        print "******************************************"
         print "The highest barley production: BY " + county_name + " in the year " + str(barley_year) + " at " + str(barley_value) + " Acres"
 
     # Horticulture Analysis
@@ -108,12 +103,12 @@ def run_analysis(dataframe):
     else:
         horticulture_value = horticulture_dict['VALUE']
         horticulture_year = horticulture_dict['YEAR']
-
+        print "******************************************"
         print "The highest horticulture nationally was in the year " + str(horticulture_year) + " at " + str(horticulture_value) + " Acres"
 
     # create a dataframe with some analysis data
     analysis_dataframe = pd.DataFrame({'datapoints_number': datapoints, 'commodity_value_count': str(commodity_value_counts),
-                                       'state_value_count': str(state_value_counts)})
+                                       'state_value_count': str(state_value_counts)}, index=[0])
     return analysis_dataframe
 
 
@@ -140,12 +135,15 @@ def begin_nass_harvest(database_host, database_name, database_user, database_pas
     print "*********** DONE READING DATA **************"
 
     print "Writing data to database"
-    #write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port, 'fact_data')
+    write_dataframe_to_db(dataframe, database_host, database_name, database_user, database_password, port, 'fact_data')
     print "*********** DONE WRITING DATA **************"
 
     print "Some analysis on the data"
+    print "---------------------------------------------"
     analysis_dataframe = run_analysis(dataframe)
     write_dataframe_to_db(analysis_dataframe, database_host, database_name, database_user, database_password, port, 'stats')
+    print "Some analysis has been written into the stats table"
+    print "*********** DONE RUNNING THE harvest PACKAGE! ***********"
 
 
 def main(argv):
@@ -163,7 +161,7 @@ def main(argv):
     port = 5432
     database_user = 'gro'
     database_password = 'gro123'
-    start_date = '2015-1-1'
+    start_date = '2005-1-1'
     end_date = '2015-12-31'
 
     for opt, arg in opts:

@@ -2,3 +2,4 @@ psycopg2==2.6.1
 pandas==0.17.1
 SQLAlchemy==1.0.12
 SQLAlchemy-Utils==0.31.6
+clint==0.5.1

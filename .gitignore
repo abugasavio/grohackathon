@@ -1,5 +1,5 @@
 # Datafiles
-nass_crops.csv
+data/nass_crops.csv.gz
 
 # Pycharm Files
 .idea/*
