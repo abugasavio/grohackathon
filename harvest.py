@@ -126,7 +126,7 @@ def begin_nass_harvest(database_host, database_name, database_user, database_pas
 
     print "Started Fetching data...."
     print "This might take a while. Grab yourself some coffee."
-    #fetch_data_via_ftp()
+    fetch_data_via_ftp()
     print "*********** DONE FETCHING DATA **************"
 
     print "Reading data into a dataframe..."
